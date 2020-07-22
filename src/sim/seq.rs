@@ -40,7 +40,8 @@ where
 {
     population: &'a mut Vec<T>,
     iter_limit: IterLimit,
-    selector: Box<Selector<T, F>>,
+    exit_treshold_value: Option<f64>,
+    selector: Box<dyn Selector<T, F>>,
     earlystopper: Option<EarlyStopper<F>>,
     duration: Option<NanoSecond>,
     error: Option<String>,
@@ -61,6 +62,7 @@ where
             sim: Simulator {
                 population,
                 iter_limit: IterLimit::new(100),
+                exit_treshold_value: None,
                 selector: Box::new(MaximizeSelector::new(3)),
                 earlystopper: None,
                 duration: Some(0),
@@ -118,6 +120,19 @@ where
                     .unwrap()
                     .fitness();
                 stopper.update(highest_fitness);
+            }
+
+            if let Some(exit_treshold_value) = self.exit_treshold_value {
+                let highest_fitness = self
+                    .population
+                    .iter()
+                    .max_by_key(|x| x.fitness())
+                    .unwrap()
+                    .fitness();
+
+                if highest_fitness.value() >= exit_treshold_value {
+                    return StepResult::Done;
+                }
             }
 
             self.iter_limit.inc();
@@ -218,7 +233,7 @@ where
                        Use the functions that start with `with_` instead.",
         since = "1.8.0"
     )]
-    pub fn set_selector(mut self, sel: Box<Selector<T, F>>) -> Self {
+    pub fn set_selector(mut self, sel: Box<dyn Selector<T, F>>) -> Self {
         self.sim.selector = sel;
         self
     }
@@ -227,7 +242,7 @@ where
     ///
     /// Returns a mutable reference to itself for chaining purposes.
     /// Does not consume the builder.
-    pub fn with_selector(&mut self, sel: Box<Selector<T, F>>) -> &mut Self {
+    pub fn with_selector(&mut self, sel: Box<dyn Selector<T, F>>) -> &mut Self {
         self.sim.selector = sel;
         self
     }
@@ -279,6 +294,12 @@ where
     /// Does not consume the builder.
     pub fn with_early_stop(&mut self, delta: F, n_iters: u64) -> &mut Self {
         self.sim.earlystopper = Some(EarlyStopper::new(delta, n_iters));
+        self
+    }
+
+    /// Set stopping threshold value
+    pub fn with_exit_threshold(&mut self, value: f64) -> &mut Self {
+        self.sim.exit_treshold_value = Some(value);
         self
     }
 }

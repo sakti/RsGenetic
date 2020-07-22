@@ -49,6 +49,10 @@ macro_rules! implement_fitness_int {
                         other - self
                     }
                 }
+
+                fn value(&self) -> f64 {
+                    return 0.0;
+                }
             }
         )*
     }
