@@ -27,6 +27,7 @@ use super::*;
 use pheno::Fitness;
 use pheno::Phenotype;
 use rand::Rng;
+use rayon::prelude::*;
 use std::marker::PhantomData;
 use std::time::Instant;
 
@@ -50,8 +51,8 @@ where
 
 impl<'a, T, F> Simulation<'a, T, F> for Simulator<'a, T, F>
 where
-    T: Phenotype<F>,
-    F: Fitness,
+    T: Phenotype<F> + Send + Sync,
+    F: Fitness + Send + Sync,
 {
     type B = SimulatorBuilder<'a, T, F>;
 
@@ -104,7 +105,7 @@ where
                 };
                 // Create children from the selected parents and mutate them.
                 children = parents
-                    .iter()
+                    .par_iter()
                     .map(|&(a, b)| a.crossover(b).mutate())
                     .collect();
             }
@@ -115,7 +116,7 @@ where
             if let Some(ref mut stopper) = self.earlystopper {
                 let highest_fitness = self
                     .population
-                    .iter()
+                    .par_iter()
                     .max_by_key(|x| x.fitness())
                     .unwrap()
                     .fitness();
@@ -125,7 +126,7 @@ where
             if let Some(exit_treshold_value) = self.exit_treshold_value {
                 let highest_fitness = self
                     .population
-                    .iter()
+                    .par_iter()
                     .max_by_key(|x| x.fitness())
                     .unwrap()
                     .fitness();
